@@ -1,6 +1,6 @@
 from langgraph.prebuilt import create_react_agent
 from langchain_openai import ChatOpenAI
-from src.tools import db_list_tables, db_schema, db_nl2sql_rows
+from src.tools import search_candidate, db_schema
 from src.config import OPENAI_API_KEY
 
 llm = ChatOpenAI(
@@ -11,6 +11,6 @@ llm = ChatOpenAI(
 
 sql_agent = create_react_agent(
     model=llm,
-    tools=[db_list_tables, db_schema, db_nl2sql_rows],  
+    tools=[search_candidate, db_schema],  
     prompt="Você é um assistente capaz de interpretar questões do usuário e retornar resultados provenientes do banco de dados. Se necessário, gera um SQL para MariaDB.",
 )

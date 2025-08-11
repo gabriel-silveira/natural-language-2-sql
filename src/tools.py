@@ -10,6 +10,20 @@ from sqlalchemy import text
 from src.db import ALLOWED_TABLES
 
 
+@tool()
+def search_candidate(field: str, value: str) -> str:
+    """Busca candidatos pelo nome, documento (cpf), email ou outros campos de texto"""
+
+    try:
+        query = "SELECT * FROM candidatos WHERE "
+
+        query += f"{field} LIKE '%{value}%'"
+
+        return query
+    except Exception as e:
+        return f"Erro ao buscar candidato: {str(e)}"
+
+
 def build_llm():
     return ChatOpenAI(
         model="gpt-4o-mini",
