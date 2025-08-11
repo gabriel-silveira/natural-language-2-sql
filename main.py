@@ -12,4 +12,5 @@ if __name__ == "__main__":
     })
 
     for message in response['messages']:
-        print(message)
+        message.pretty_print()
+        # print(f"{message['role']}: {message['content']}\n\n")

@@ -3,6 +3,8 @@ from sqlalchemy.engine import Engine
 from langchain_community.utilities import SQLDatabase
 from src.config import MARIADB_URI
 
+ALLOWED_TABLES = ["candidatos", "entrevistas"]
+
 
 # --------- Conexão com MariaDB ---------
 def build_engine() -> Engine:
@@ -20,5 +22,8 @@ def build_engine() -> Engine:
 
 ENGINE: Engine = build_engine()
 
-DB = SQLDatabase.from_uri(MARIADB_URI, sample_rows_in_table_info=2)
-
+DB = SQLDatabase.from_uri(
+    MARIADB_URI,
+    sample_rows_in_table_info=2,
+    include_tables=ALLOWED_TABLES,
+)

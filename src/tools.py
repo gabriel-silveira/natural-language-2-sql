@@ -7,8 +7,7 @@ from langchain_core.output_parsers import StrOutputParser
 from src.db import DB, ENGINE
 from src.config import OPENAI_API_KEY
 from sqlalchemy import text
-
-ALLOWED_TABLES = ["candidatos", "entrevistas"]
+from src.db import ALLOWED_TABLES
 
 
 def build_llm():
@@ -39,12 +38,38 @@ def _enforce_allowed_tables(sql: str) -> None:
 
 
 def _validate_select_only(sql: str) -> str:
-    if not re.match(r"^\s*select\b", sql.strip(), re.IGNORECASE):
+    # Adicionar logs para debug
+    print(f"SQL recebido para validação: '{sql}'")
+    print(f"Primeiros 10 caracteres (representação): {repr(sql[:10])}")
+    
+    # Remover marcadores de código Markdown se presentes
+    if sql.startswith('```'):
+        # Encontra o final do bloco de código
+        end_marker = sql.rfind('```')
+        if end_marker > 3:  # Certifica-se de que há um marcador de fim
+            # Extrai apenas o conteúdo entre os marcadores
+            # Pula a primeira linha se contiver apenas ```sql ou similar
+            lines = sql[3:end_marker].strip().split('\n')
+            if lines[0].strip().lower() in ['sql', 'mysql', 'mariadb']:
+                sql = '\n'.join(lines[1:]).strip()
+            else:
+                sql = '\n'.join(lines).strip()
+            print(f"SQL após remoção de marcadores Markdown: '{sql}'")
+    
+    # Normalizar a string removendo espaços extras e caracteres invisíveis
+    normalized_sql = sql.strip()
+    
+    # Verificar se começa com SELECT
+    if not re.match(r"(?i)^\s*select\b", normalized_sql, re.IGNORECASE):
+        print(f"ERRO: SQL não começa com SELECT: '{normalized_sql}'")
         raise ValueError("Somente consultas SELECT são permitidas.")
+    
     # Impõe LIMIT se não houver
-    if not re.search(r"\blimit\s+\d+\s*;?\s*$", sql, re.IGNORECASE):
-        sql = sql.rstrip().rstrip(";") + " LIMIT 200;"
-    return sql
+    if not re.search(r"\blimit\s+\d+\s*;?\s*$", normalized_sql, re.IGNORECASE):
+        normalized_sql = normalized_sql.rstrip().rstrip(";") + " LIMIT 200;"
+        print(f"SQL com LIMIT adicionado: '{normalized_sql}'")
+    
+    return normalized_sql
 
 
 # Cadeia NL → SQL
@@ -57,7 +82,10 @@ def build_nl2sql_chain() -> str:
         "- Gere apenas UM único SELECT válido.\n"
         "- Não use DML/DDL (INSERT/UPDATE/DELETE/CREATE/etc.).\n"
         "- Utilize apenas tabelas/colunas existentes no schema abaixo.\n"
-        "- Se precisar limitar linhas, use LIMIT.\n"),
+        "- Se precisar limitar linhas, use LIMIT.\n"
+        "- Para campos de texto (VARCHAR, CHAR, TEXT), use LIKE com wildcards para busca parcial.\n"
+        "- Quando buscar por nomes ou outros campos de texto, use LIKE '%termo%' em vez de = 'termo'.\n"
+        "- Exemplo: use 'nome LIKE \'%Gabriel%Silveira%\'' em vez de 'nome = \'Gabriel Silveira\'' para encontrar 'Gabriel Silveira de Souza'.\n"),
         ("system", "Schema disponível:\n{schema}"),
         ("human", "Pergunta do usuário:\n{question}\n\n"
             "Saída esperada: apenas o SQL (sem comentários nem explicações)."),
@@ -120,7 +148,9 @@ def db_nl2sql_rows(question: str) -> str:
     print(f"Pergunta: {question}\n\n")
 
     # 1) Schema (pode otimizar passando só as tabelas candidatas)
-    schema = DB.get_table_info(db_list_tables())
+    # Usando .invoke() em vez de chamar diretamente
+    table_names = db_list_tables.invoke("")
+    schema = DB.get_table_info(table_names)
 
     # 1.5) Debug
     print(f"Schema: {schema}\n\n")
@@ -140,7 +170,16 @@ def db_nl2sql_rows(question: str) -> str:
     with ENGINE.connect() as conn:
         conn.execute(text("SET SESSION time_zone = '+00:00'"))
         result = conn.execute(text(safe_sql))
-        rows = [dict(r._mapping) for r in result]
+        
+        # Converter resultados para dicionário e tratar tipos de dados não serializáveis
+        rows = []
+        for r in result:
+            row_dict = dict(r._mapping)
+            # Converter objetos date/datetime para string ISO
+            for key, value in row_dict.items():
+                if hasattr(value, 'isoformat'):  # Verifica se é date, datetime ou similar
+                    row_dict[key] = value.isoformat()
+            rows.append(row_dict)
 
     # Retorna JSON puro (string). Como return_direct=True, o agente repassa isso sem alterações.
     return json.dumps(rows, ensure_ascii=False)
