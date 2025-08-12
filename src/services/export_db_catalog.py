@@ -35,7 +35,7 @@ from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
-from src.config import MARIADB_URI
+from src.tools import ALLOWED_TABLES
 
 
 # ------------------------------- Utilidades ----------------------------------
@@ -315,19 +315,24 @@ def export_db_catalog(
 
     for t in tables:
         try:
-            catalog["tables"].append(
-                build_table_dict(
-                    engine,
-                    eff_schema,
-                    t,
-                    insp,
-                    sample_rows=sample_rows,
-                    fk_rules=fk_rules,
-                    mask_pii=mask_pii,
-                    max_text_len=max_text_len,
+            if ALLOWED_TABLES and t in ALLOWED_TABLES:
+                print(f"Exportando tabela permitida: {t}")
+
+                catalog["tables"].append(
+                    build_table_dict(
+                        engine,
+                        eff_schema,
+                        t,
+                        insp,
+                        sample_rows=sample_rows,
+                        fk_rules=fk_rules,
+                        mask_pii=mask_pii,
+                        max_text_len=max_text_len,
+                    )
                 )
-            )
         except SQLAlchemyError as e:
+            print(f"Falha ao inspecionar a tabela: {e}")
+
             catalog["tables"].append({
                 "name": t,
                 "error": f"Falha ao inspecionar a tabela: {e}",

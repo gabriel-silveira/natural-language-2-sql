@@ -13,17 +13,16 @@ from src.services.export_db_catalog import export_db_catalog
 
 
 @tool()
-def search_candidate(field: str, value: str) -> str:
-    """Busca candidatos pelo nome, documento (cpf), email ou outros campos de texto"""
+def run_query(sql: str) -> Dict[str, Any]:
+    """Executa SQL (somente SELECT) no MariaDB e retorna linhas como JSON."""
+    safe_sql = _validate_select_only(sql)
 
-    try:
-        query = "SELECT * FROM candidatos WHERE "
+    with ENGINE.connect() as conn:
+        conn.execute(text("SET SESSION time_zone = '+00:00'"))
+        res = conn.execute(text(safe_sql))
+        rows = [dict(r._mapping) for r in res]
 
-        query += f"{field} LIKE '%{value}%'"
-
-        return query
-    except Exception as e:
-        return f"Erro ao buscar candidato: {str(e)}"
+    return {"sql": safe_sql, "rows": rows, "row_count": len(rows)}
 
 
 def build_llm():
@@ -122,25 +121,17 @@ def db_list_tables(_: str = "") -> List[str]:
 
 
 @tool("get_db_catalog", return_direct=False)
-def get_db_catalog(table_names: Optional[List[str]] = None) -> json:
-    """Exporta o catálogo do MariaDB como JSON (string).""" 
+def get_db_catalog() -> str:
+    """Exporta o catálogo do MariaDB como JSON (string)."""
+
+    print("Obtendo catálogo do banco...")
 
     catalog = export_db_catalog(
         url=MARIADB_URI,
-        sample_rows=5,
+        sample_rows=0,
         mask_pii=True,
         max_text_len=160,
     )
-
-    if table_names:
-        catalog_tables_allowed = {"schema": "", "tables": []}
-
-        if ALLOWED_TABLES:
-            for t in table_names:
-                if t in ALLOWED_TABLES:
-                    catalog_tables_allowed["tables"].append(t)
-
-        return catalog_tables_allowed
 
     return catalog
 

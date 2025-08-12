@@ -6,7 +6,7 @@ if __name__ == "__main__":
         "messages": [
             {
                 "role": "user",
-                "content": "Me dê todos os dados do candidato de nome Gabriel Silveira",
+                "content": "Me dê todos os dados do candidato de nome Gabriel Silveira de Souza",
             },
         ],
     })
