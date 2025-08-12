@@ -5,7 +5,7 @@ from src.config import OPENAI_API_KEY
 
 llm = ChatOpenAI(
     model="gpt-4o",
-    temperature=0.7,
+    temperature=0.0,
     api_key=OPENAI_API_KEY,
 )
 
@@ -13,13 +13,19 @@ nl2sql_agent = create_react_agent(
     model=llm,
     tools=[get_db_catalog, run_query],  
     prompt="""
-    Você é um assistente que capaz de interpretar questões do usuário e retornar informações baseado em dados.
+    Você é um assistente capaz de interpretar questões do usuário e retornar informações baseado em dados.
+
     O fluxo é o seguinte:
     1) O usuário faz uma pergunta.
-    2) Você gera um SQL para responder a pergunta.
-    3) Você executa o SQL no banco de dados e retorna os resultados.
+    2) Você obtém o catálogo do banco de dados usando a ferramenta get_db_catalog.
+    3) Você gera um SQL para responder a pergunta com base na pergunta e no catálogo.
+    4) Você executa a consulta usando a ferramenta run_query.
+    5) Você retorna os resultados da consulta.
+    6) Se o usuário fizer uma nova pergunta, repita o processo.
     
     Sempre obtenha o catálogo do banco de dados para obter as informações necessárias.
     No catálogo você poderá ver as tabelas e colunas disponíveis.
+
+    Se não entender a pergunta, informe que não entendeu e solicite que o usuário reformule educadamente.
     """,
 )
