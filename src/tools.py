@@ -4,10 +4,12 @@ from langchain_openai import ChatOpenAI
 from langchain_core.tools import tool
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from src.db import DB, ENGINE
-from src.config import OPENAI_API_KEY
 from sqlalchemy import text
+
+from src.db import DB, ENGINE
+from src.config import OPENAI_API_KEY, MARIADB_URI
 from src.db import ALLOWED_TABLES
+from src.services.export_db_catalog import export_db_catalog
 
 
 @tool()
@@ -119,20 +121,28 @@ def db_list_tables(_: str = "") -> List[str]:
     return names
 
 
-@tool("db_schema", return_direct=False)
-def db_schema(table_names: Optional[List[str]] = None) -> str:
-    """Retorna o schema (DDL simplificado + amostras) das tabelas informadas.
-    Se não for passado, retorna das tabelas permitidas."""
+@tool("get_db_catalog", return_direct=False)
+def get_db_catalog(table_names: Optional[List[str]] = None) -> json:
+    """Exporta o catálogo do MariaDB como JSON (string).""" 
 
-    if table_names is None or len(table_names) == 0:
-        table_names = db_list_tables()
+    catalog = export_db_catalog(
+        url=MARIADB_URI,
+        sample_rows=5,
+        mask_pii=True,
+        max_text_len=160,
+    )
 
-    if ALLOWED_TABLES:
-        for t in table_names:
-            if t not in ALLOWED_TABLES:
-                raise ValueError(f"Tabela não permitida: {t}")
+    if table_names:
+        catalog_tables_allowed = {"schema": "", "tables": []}
 
-    return DB.get_table_info(table_names)
+        if ALLOWED_TABLES:
+            for t in table_names:
+                if t in ALLOWED_TABLES:
+                    catalog_tables_allowed["tables"].append(t)
+
+        return catalog_tables_allowed
+
+    return catalog
 
 
 @tool("db_query", return_direct=False)

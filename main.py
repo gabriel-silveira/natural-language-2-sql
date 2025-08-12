@@ -1,16 +1,15 @@
-from src.agents import sql_agent
+from src.agents.nl2sql_agent import nl2sql_agent
 
 
 if __name__ == "__main__":
-    response = sql_agent.invoke({
+    response = nl2sql_agent.invoke({
         "messages": [
             {
                 "role": "user",
-                "content": "Me dê a ficha completa do candidato de nome Gabriel Silveira",
+                "content": "Me dê todos os dados do candidato de nome Gabriel Silveira",
             },
         ],
     })
 
     for message in response['messages']:
         message.pretty_print()
-        # print(f"{message['role']}: {message['content']}\n\n")
