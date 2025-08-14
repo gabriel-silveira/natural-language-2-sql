@@ -12,3 +12,4 @@ import os
 # API Keys
 MARIADB_URI = os.getenv('MARIADB_URI')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+SCHEMA_SAFE_PASSWORD = os.getenv('SCHEMA_SAFE_PASSWORD')
