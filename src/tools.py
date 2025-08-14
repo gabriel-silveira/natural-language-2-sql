@@ -8,7 +8,6 @@ from sqlalchemy import text
 
 from src.db import DB, ENGINE
 from src.config import OPENAI_API_KEY, MARIADB_URI
-from src.db import ALLOWED_TABLES
 from src.services.export_db_catalog import export_db_catalog
 
 
@@ -34,22 +33,10 @@ def build_llm():
 
 
 def _enforce_allowed_tables(sql: str) -> None:
-    if not ALLOWED_TABLES:
-        return
-    lowered = sql.lower()
-    print("Verificando tabelas permitidas...")
-    for t in ALLOWED_TABLES:
-        if t and t.lower() in lowered:
-            # encontrou uma permitida; seguimos checando proibidas
-            print(f"Tabela permitida: {t}")
-            pass
-    # Checagem simples: se houver FROM/ JOIN com tabela fora da allowlist, recuse
-    tokens = re.findall(r"(from|join)\s+([`\"\[\]]?[\w\.]+[`\"\[\]]?)", lowered)
-    if tokens:
-        for _, tbl in tokens:
-            base = tbl.strip("`\"[]").split(".")[-1]
-            if base not in {t.strip() for t in ALLOWED_TABLES if t}:
-                raise ValueError(f"Tabela não permitida: {base}")
+    """Função mantida para compatibilidade, mas não faz mais verificações
+    já que o controle de acesso é feito via schema seguro e permissões do usuário."""
+    # O controle agora é feito via schema seguro e permissões do usuário
+    pass
 
 
 def _validate_select_only(sql: str) -> str:
@@ -114,10 +101,7 @@ def build_nl2sql_chain() -> str:
 @tool("db_list_tables", return_direct=False)
 def db_list_tables(_: str = "") -> List[str]:
     """Lista nomes de tabelas do banco que o agente pode usar."""
-    names = sorted(DB.get_usable_table_names())
-    if ALLOWED_TABLES:
-        names = [n for n in names if n in ALLOWED_TABLES]
-    return names
+    return sorted(DB.get_usable_table_names())
 
 
 @tool("get_db_catalog", return_direct=False)
@@ -131,6 +115,7 @@ def get_db_catalog() -> str:
         sample_rows=0,
         mask_pii=True,
         max_text_len=160,
+        include_views=True,
     )
 
     return catalog

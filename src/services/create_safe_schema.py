@@ -74,7 +74,6 @@ revoke_privileges = f"REVOKE ALL PRIVILEGES, GRANT OPTION FROM '{safe_user}'@'lo
 # Conceda apenas SELECT no schema seguro (e nada no schema original)
 grant_select = f"GRANT SELECT ON {safe_schema}.* TO '{safe_user}'@'localhost';"
 
-# Opcional: negar acesso explícito ao schema original
-revoke_hr = f"REVOKE SELECT ON {original_schema}.* FROM '{safe_user}'@'localhost';"
+grant_show_view = f"GRANT SHOW VIEW ON {safe_schema}.* TO '{safe_user}'@'localhost';"
 
 flush = "FLUSH PRIVILEGES;"

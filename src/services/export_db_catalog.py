@@ -35,8 +35,6 @@ from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
-from src.tools import ALLOWED_TABLES
-
 
 # ------------------------------- Utilidades ----------------------------------
 
@@ -315,10 +313,9 @@ def export_db_catalog(
 
     for t in tables:
         try:
-            if ALLOWED_TABLES and t in ALLOWED_TABLES:
-                print(f"Exportando tabela permitida: {t}")
+            print(f"Exportando tabela/view: {t}")
 
-                catalog["tables"].append(
+            catalog["tables"].append(
                     build_table_dict(
                         engine,
                         eff_schema,
